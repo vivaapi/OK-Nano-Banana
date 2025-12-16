@@ -33,6 +33,7 @@ interface GeneratedImage {
   modelName: string;
   duration: string;
   modelId: string;
+  timestamp: number;
 }
 
 interface ReferenceImage {
@@ -94,6 +95,70 @@ const generateUUID = () => {
   });
 };
 
+// --- IndexedDB Persistence ---
+const DB_NAME = 'viva_ai_db';
+const STORE_NAME = 'images';
+const DB_VERSION = 1;
+
+const initDB = (): Promise<IDBDatabase> => {
+  if (typeof window === 'undefined' || !window.indexedDB) {
+      return Promise.reject("IndexedDB not supported");
+  }
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+    request.onupgradeneeded = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+      }
+    };
+  });
+};
+
+const saveImageToDB = async (image: GeneratedImage) => {
+  try {
+    const db = await initDB();
+    return new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction([STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.put(image);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  } catch(e) { console.error("DB Save Error", e); }
+};
+
+const getAllImagesFromDB = async (): Promise<GeneratedImage[]> => {
+  try {
+    const db = await initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_NAME], 'readonly');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.getAll();
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => reject(request.error);
+    });
+  } catch(e) {
+      console.error("DB Load Error", e);
+      return [];
+  }
+};
+
+const deleteImageFromDB = async (id: string) => {
+  try {
+    const db = await initDB();
+    return new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction([STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.delete(id);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  } catch(e) { console.error("DB Delete Error", e); }
+};
+
 // --- Main Component ---
 
 const App = () => {
@@ -144,6 +209,15 @@ const App = () => {
       document.documentElement.classList.remove('dark');
     }
   }, [isDarkMode]);
+
+  // Load History from DB
+  useEffect(() => {
+    getAllImagesFromDB().then(images => {
+        // Sort by timestamp descending (newest first)
+        const sorted = images.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        setGeneratedImages(sorted);
+    });
+  }, []);
 
   useEffect(() => {
     // Load config from local storage
@@ -325,6 +399,7 @@ const App = () => {
   };
 
   const handleDeleteImage = (id: string) => {
+    deleteImageFromDB(id);
     setGeneratedImages(prev => prev.filter(img => img.id !== id));
     setSelectedImageIds(prev => {
       const next = new Set(prev);
@@ -334,6 +409,7 @@ const App = () => {
   };
 
   const deleteSelectedImages = () => {
+    selectedImageIds.forEach(id => deleteImageFromDB(id));
     setGeneratedImages(prev => prev.filter(img => !selectedImageIds.has(img.id)));
     setSelectedImageIds(new Set());
   };
@@ -645,7 +721,8 @@ const App = () => {
             prompt: promptText,
             modelId: modelId,
             modelName: modelName,
-            duration: duration
+            duration: duration,
+            timestamp: Date.now()
           });
         } else {
           console.error("Generation failed:", res.reason);
@@ -654,6 +731,7 @@ const App = () => {
       });
 
       if (successes.length > 0) {
+        successes.forEach(img => saveImageToDB(img));
         setGeneratedImages(prev => [...successes, ...prev]);
         setOperationState('completed');
         if (successes.length < count) {
