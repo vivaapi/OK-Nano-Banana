@@ -933,7 +933,63 @@ const App = () => {
               </div>
             </div>
 
-            {/* Prompt & Inputs */}
+            {/* Config Grid (Moved above Prompt) */}
+            <div className="grid grid-cols-2 gap-6">
+              
+              {/* Aspect Ratio */}
+              <div className="space-y-2 col-span-1">
+                <label className={`text-xs font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>比例</label>
+                <div className="grid grid-cols-1 gap-2">
+                    <select 
+                        value={aspectRatio}
+                        onChange={(e) => setAspectRatio(e.target.value)}
+                        className={`w-full text-sm rounded-lg p-2.5 border focus:outline-none focus:border-brand-500 ${isDarkMode ? 'bg-slate-800 text-white border-slate-700' : 'bg-white text-slate-900 border-slate-200'}`}
+                        >
+                        {ASPECT_RATIOS.map(r => (
+                            <option key={r.value} value={r.value}>{r.label}</option>
+                        ))}
+                    </select>
+                </div>
+              </div>
+
+              {/* Resolution (Only for Pro) - Moved to same row as Ratio */}
+              <div className={`space-y-2 col-span-1 ${selectedModel !== 'gemini-3-pro-image-preview' ? 'opacity-50' : ''}`}>
+                 <div className="flex justify-between items-center">
+                    <label className={`text-xs font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>分辨率</label>
+                 </div>
+                 <select
+                    value={imageSize}
+                    onChange={(e) => setImageSize(e.target.value)}
+                    disabled={selectedModel !== 'gemini-3-pro-image-preview'}
+                    className={`w-full text-sm rounded-lg p-2.5 border focus:outline-none focus:border-brand-500 ${isDarkMode ? 'bg-slate-800 text-white border-slate-700' : 'bg-white text-slate-900 border-slate-200'}`}
+                 >
+                    {RESOLUTIONS.map(res => (
+                        <option key={res.value} value={res.value}>{res.label}</option>
+                    ))}
+                 </select>
+              </div>
+
+              {/* Generation Count */}
+              <div className="space-y-2 col-span-2">
+                 <label className={`text-xs font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>生成数量 (1-10)</label>
+                 <div className="flex items-center gap-3">
+                    <input 
+                      type="range" 
+                      min="1" 
+                      max="10" 
+                      value={generationCount}
+                      onChange={(e) => setGenerationCount(Number(e.target.value))}
+                      className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700 accent-brand-500"
+                    />
+                    <div className={`w-12 text-center py-1.5 rounded-md text-sm font-bold border ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
+                      {generationCount}
+                    </div>
+                 </div>
+              </div>
+
+            </div>
+
+            {/* Prompt & Inputs (Moved below Config) */}
             <div className="space-y-3">
               <div className="flex justify-between items-end mb-1">
                 <div className="flex items-center gap-3">
@@ -1021,83 +1077,32 @@ const App = () => {
               </div>
             </div>
 
-            {/* Config Grid */}
-            <div className="grid grid-cols-2 gap-6">
-              
-              {/* Aspect Ratio */}
-              <div className="space-y-2 col-span-1">
-                <label className={`text-xs font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>比例</label>
-                <div className="grid grid-cols-1 gap-2">
-                    <select 
-                        value={aspectRatio}
-                        onChange={(e) => setAspectRatio(e.target.value)}
-                        className={`w-full text-sm rounded-lg p-2.5 border focus:outline-none focus:border-brand-500 ${isDarkMode ? 'bg-slate-800 text-white border-slate-700' : 'bg-white text-slate-900 border-slate-200'}`}
-                        >
-                        {ASPECT_RATIOS.map(r => (
-                            <option key={r.value} value={r.value}>{r.label}</option>
-                        ))}
-                    </select>
-                </div>
-              </div>
-
-              {/* Resolution (Only for Pro) - Moved to same row as Ratio */}
-              <div className={`space-y-2 col-span-1 ${selectedModel !== 'gemini-3-pro-image-preview' ? 'opacity-50' : ''}`}>
-                 <div className="flex justify-between items-center">
-                    <label className={`text-xs font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>分辨率</label>
-                 </div>
-                 <select
-                    value={imageSize}
-                    onChange={(e) => setImageSize(e.target.value)}
-                    disabled={selectedModel !== 'gemini-3-pro-image-preview'}
-                    className={`w-full text-sm rounded-lg p-2.5 border focus:outline-none focus:border-brand-500 ${isDarkMode ? 'bg-slate-800 text-white border-slate-700' : 'bg-white text-slate-900 border-slate-200'}`}
-                 >
-                    {RESOLUTIONS.map(res => (
-                        <option key={res.value} value={res.value}>{res.label}</option>
-                    ))}
-                 </select>
-              </div>
-
-              {/* Generation Count */}
-              <div className="space-y-2 col-span-2">
-                 <label className={`text-xs font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>生成数量 (1-10)</label>
-                 <div className="flex items-center gap-3">
-                    <input 
-                      type="range" 
-                      min="1" 
-                      max="10" 
-                      value={generationCount}
-                      onChange={(e) => setGenerationCount(Number(e.target.value))}
-                      className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700 accent-brand-500"
-                    />
-                    <div className={`w-12 text-center py-1.5 rounded-md text-sm font-bold border ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
-                      {generationCount}
-                    </div>
-                 </div>
-              </div>
-
-            </div>
-
             {/* Submit Button */}
-            <button 
-              onClick={handleGenerate}
-              disabled={operationState === 'generating'}
-              className="w-full group relative overflow-hidden bg-gradient-to-r from-brand-600 via-brand-500 to-brand-400 hover:from-brand-500 hover:to-brand-300 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-brand-500/25 disabled:opacity-70 disabled:cursor-not-allowed"
-            >
-              <span className="relative z-10 flex items-center justify-center gap-2">
-                {operationState === 'generating' ? (
-                   <>
-                     <Loader2 className="w-5 h-5 animate-spin" />
-                     生成中 ({activeBatchCount}张)...
-                   </>
-                ) : (
-                   <>
-                     <Sparkles className="w-5 h-5" />
-                     立即生成
-                   </>
-                )}
-              </span>
-              <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out"></div>
-            </button>
+            <div>
+              <button 
+                onClick={handleGenerate}
+                disabled={operationState === 'generating'}
+                className="w-full group relative overflow-hidden bg-gradient-to-r from-brand-600 via-brand-500 to-brand-400 hover:from-brand-500 hover:to-brand-300 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-brand-500/25 disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                <span className="relative z-10 flex items-center justify-center gap-2">
+                  {operationState === 'generating' ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      生成中 ({activeBatchCount}张)...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-5 h-5" />
+                      立即生成
+                    </>
+                  )}
+                </span>
+                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out"></div>
+              </button>
+              <p className={`text-[10px] text-center mt-3 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                如遇图片生成失败，系统会自动返还消耗金额
+              </p>
+            </div>
 
             {error && (
               <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-lg flex items-start gap-2 animate-in fade-in slide-in-from-top-1">
