@@ -3,11 +3,51 @@ import { createRoot } from 'react-dom/client';
 // GoogleGenAI import removed
 import { 
   Settings2, Image as ImageIcon, Type, Sparkles, Video, 
-  Sun, Moon, Loader2, Play, Download, Wand2, CircleUser,
-  Bot, Coins, Monitor, X, Check, AlertCircle, Plus, ImagePlus,
-  Globe, Key, ExternalLink, Maximize2, Trash2, Edit, CheckSquare, Square,
-  FileText, RefreshCw, Info, Film, Copy, Headset
+  Sun, Moon, Loader2, Download, Wand2,
+  Bot, Coins, X, Check, AlertCircle, Plus,
+  Globe, Key, ExternalLink, Maximize2, Trash2, Edit, CheckSquare,
+  RefreshCw, Film, Copy, Headset
 } from 'lucide-react';
+
+// --- Types & Declarations ---
+
+// Fix for "process is not defined" error in TypeScript
+declare var process: {
+  env: {
+    API_KEY?: string;
+    [key: string]: any;
+  }
+};
+
+// Fix for window.aistudio type errors
+declare global {
+  interface AIStudio {
+    hasSelectedApiKey: () => Promise<boolean>;
+    openSelectKey: () => Promise<void>;
+  }
+}
+
+type ImageOperationState = 'idle' | 'generating' | 'completed' | 'failed';
+
+interface AppConfig {
+  baseUrl: string;
+  apiKey: string;
+}
+
+interface GeneratedImage {
+  id: string;
+  url: string;
+  prompt: string;
+  modelName: string;
+  duration: string;
+  modelId: string;
+}
+
+interface ReferenceImage {
+  id: string;
+  data: string;
+  mimeType: string;
+}
 
 // --- Constants ---
 
@@ -61,36 +101,6 @@ const generateUUID = () => {
     return v.toString(16);
   });
 };
-
-// --- Types ---
-type ImageOperationState = 'idle' | 'generating' | 'completed' | 'failed';
-
-interface AppConfig {
-  baseUrl: string;
-  apiKey: string;
-}
-
-interface GeneratedImage {
-  id: string;
-  url: string;
-  prompt: string;
-  modelName: string;
-  duration: string;
-  modelId: string;
-}
-
-interface ReferenceImage {
-  id: string;
-  data: string;
-  mimeType: string;
-}
-
-declare global {
-  interface AIStudio {
-    hasSelectedApiKey: () => Promise<boolean>;
-    openSelectKey: () => Promise<void>;
-  }
-}
 
 // --- Main Component ---
 
