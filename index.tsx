@@ -938,18 +938,18 @@ const App = () => {
               
               {/* Aspect Ratio */}
               <div className="space-y-2 col-span-1">
-                <label className={`text-xs font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>比例</label>
-                <div className="grid grid-cols-1 gap-2">
-                    <select 
-                        value={aspectRatio}
-                        onChange={(e) => setAspectRatio(e.target.value)}
-                        className={`w-full text-sm rounded-lg p-2.5 border focus:outline-none focus:border-brand-500 ${isDarkMode ? 'bg-slate-800 text-white border-slate-700' : 'bg-white text-slate-900 border-slate-200'}`}
-                        >
-                        {ASPECT_RATIOS.map(r => (
-                            <option key={r.value} value={r.value}>{r.label}</option>
-                        ))}
-                    </select>
+                <div className="flex justify-between items-center">
+                    <label className={`text-xs font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>比例</label>
                 </div>
+                <select 
+                    value={aspectRatio}
+                    onChange={(e) => setAspectRatio(e.target.value)}
+                    className={`w-full text-sm rounded-lg p-2.5 border focus:outline-none focus:border-brand-500 ${isDarkMode ? 'bg-slate-800 text-white border-slate-700' : 'bg-white text-slate-900 border-slate-200'}`}
+                    >
+                    {ASPECT_RATIOS.map(r => (
+                        <option key={r.value} value={r.value}>{r.label}</option>
+                    ))}
+                </select>
               </div>
 
               {/* Resolution (Only for Pro) - Moved to same row as Ratio */}
