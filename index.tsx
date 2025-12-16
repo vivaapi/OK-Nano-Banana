@@ -19,14 +19,6 @@ declare var process: {
   }
 };
 
-// Fix for window.aistudio type errors
-declare global {
-  interface AIStudio {
-    hasSelectedApiKey: () => Promise<boolean>;
-    openSelectKey: () => Promise<void>;
-  }
-}
-
 type ImageOperationState = 'idle' | 'generating' | 'completed' | 'failed';
 
 interface AppConfig {
@@ -235,8 +227,8 @@ const App = () => {
 
   const checkApiKey = async () => {
     // Only check internal AI Studio key if no custom key is provided
-    if (!config.apiKey && typeof window !== 'undefined' && window.aistudio && window.aistudio.hasSelectedApiKey) {
-      const hasKey = await window.aistudio.hasSelectedApiKey();
+    if (!config.apiKey && typeof window !== 'undefined' && (window as any).aistudio && (window as any).aistudio.hasSelectedApiKey) {
+      const hasKey = await (window as any).aistudio.hasSelectedApiKey();
       setApiKeyMissing(!hasKey);
     }
   };
@@ -349,11 +341,19 @@ const App = () => {
   const optimizePrompt = async () => {
      if (!prompt) return;
      
-     const effectiveApiKey = config.apiKey || process.env.API_KEY;
+     let effectiveApiKey = config.apiKey || process.env.API_KEY;
      if (!effectiveApiKey) {
-         alert("请先配置API Key以使用智能优化功能");
-         setIsSettingsOpen(true);
-         return;
+         if (typeof window !== 'undefined' && (window as any).aistudio && (window as any).aistudio.openSelectKey) {
+             await (window as any).aistudio.openSelectKey();
+             effectiveApiKey = config.apiKey || process.env.API_KEY;
+             setApiKeyMissing(false);
+         }
+         
+         if (!effectiveApiKey) {
+            alert("请先配置API Key以使用智能优化功能");
+            setIsSettingsOpen(true);
+            return;
+         }
      }
 
      setIsOptimizing(true);
@@ -386,6 +386,14 @@ const App = () => {
         });
 
         if (!response.ok) {
+             const errData = await response.json().catch(() => ({}));
+             if (response.status === 404 && errData.error?.message?.includes("Requested entity was not found")) {
+                 setApiKeyMissing(true);
+                 if ((window as any).aistudio && (window as any).aistudio.openSelectKey) {
+                    await (window as any).aistudio.openSelectKey();
+                    setApiKeyMissing(false);
+                 }
+             }
              throw new Error("优化请求失败");
         }
 
@@ -420,21 +428,29 @@ const App = () => {
       return;
     }
     
-    const effectiveApiKey = config.apiKey || process.env.API_KEY;
+    let effectiveApiKey = config.apiKey || process.env.API_KEY;
     
     if (!effectiveApiKey) {
-        if (typeof window !== 'undefined' && window.aistudio && window.aistudio.hasSelectedApiKey) {
-          const hasKey = await window.aistudio.hasSelectedApiKey();
+        if (typeof window !== 'undefined' && (window as any).aistudio && (window as any).aistudio.hasSelectedApiKey) {
+          const hasKey = await (window as any).aistudio.hasSelectedApiKey();
           if (!hasKey) {
-            setApiKeyMissing(true);
-            alert("请先设置API令牌");
-            setIsSettingsOpen(true);
-            return;
+             await (window as any).aistudio.openSelectKey();
+             setApiKeyMissing(false);
           }
-        } else {
-            alert("请先设置API令牌");
-            setIsSettingsOpen(true);
-            return;
+          effectiveApiKey = config.apiKey || process.env.API_KEY;
+        } 
+        
+        if (!effectiveApiKey) {
+             if (typeof window !== 'undefined' && (window as any).aistudio) {
+                 // Assume openSelectKey worked or will work, but if we still don't have it...
+                 // Proceed anyway, maybe process.env.API_KEY is just delayed or this variable isn't updating?
+                 // But fetch will use effectiveApiKey. 
+                 // We will trust the previous step.
+             } else {
+                alert("请先设置API令牌");
+                setIsSettingsOpen(true);
+                return;
+             }
         }
     }
 
@@ -502,6 +518,10 @@ const App = () => {
 
              if (!response.ok) {
                  const errData = await response.json().catch(() => ({}));
+                 // Handle specific error for invalid key/project
+                 if (response.status === 404 && errData.error?.message?.includes("Requested entity was not found")) {
+                     throw new Error("Requested entity was not found. Please re-select your API key.");
+                 }
                  throw new Error(errData.error?.message || `API Error ${response.status}: ${response.statusText}`);
              }
 
@@ -580,6 +600,9 @@ const App = () => {
 
             if (!response.ok) {
                 const errData = await response.json().catch(() => ({}));
+                if (response.status === 404 && errData.error?.message?.includes("Requested entity was not found")) {
+                     throw new Error("Requested entity was not found. Please re-select your API key.");
+                }
                 throw new Error(errData.error?.message || `HTTP ${response.status}: ${response.statusText}`);
             }
 
@@ -643,11 +666,20 @@ const App = () => {
     } catch (err: any) {
       console.error(err);
       let errMsg = err.message || "生成失败";
+      
+      if (errMsg.includes("Requested entity was not found")) {
+          setApiKeyMissing(true);
+          if ((window as any).aistudio && (window as any).aistudio.openSelectKey) {
+              await (window as any).aistudio.openSelectKey();
+              setApiKeyMissing(false);
+          }
+      }
+
       // Enhance error messages for common proxy issues
       if (errMsg.includes("403") || errMsg.includes("PERMISSION_DENIED")) {
          errMsg = "权限拒绝 (403)。可能原因：1.API Key所在的分组不支持此模型 2.Token余额不足 3.请尝试更换模型。";
       }
-      else if (errMsg.includes("404")) errMsg = "API连接失败 (404)。请确认BaseURL配置正确 (Viva通常为 https://www.vivaapi.cn)。";
+      else if (errMsg.includes("404") && !errMsg.includes("Requested entity")) errMsg = "API连接失败 (404)。请确认BaseURL配置正确 (Viva通常为 https://www.vivaapi.cn)。";
       else if (errMsg.includes("401")) errMsg = "API鉴权失败 (401)。Key无效或过期。";
       else if (errMsg.includes("Failed to fetch")) errMsg = "网络请求失败，请检查网络连接或API地址是否支持跨域(CORS)。";
       
@@ -1029,7 +1061,17 @@ const App = () => {
                 )}
             </div>
             {apiKeyMissing && (
-              <div className="text-xs text-amber-500 bg-amber-500/10 px-3 py-1 rounded-full flex items-center gap-2 border border-amber-500/20 animate-pulse cursor-pointer hover:bg-amber-500/20 transition-colors" onClick={() => setIsSettingsOpen(true)}>
+              <div 
+                className="text-xs text-amber-500 bg-amber-500/10 px-3 py-1 rounded-full flex items-center gap-2 border border-amber-500/20 animate-pulse cursor-pointer hover:bg-amber-500/20 transition-colors" 
+                onClick={async () => {
+                    if ((window as any).aistudio && (window as any).aistudio.openSelectKey) {
+                        await (window as any).aistudio.openSelectKey();
+                        setApiKeyMissing(false);
+                    } else {
+                        setIsSettingsOpen(true);
+                    }
+                }}
+              >
                  <span>未配置API令牌</span>
                  <button className="underline hover:text-amber-600 font-bold">去配置</button>
               </div>
